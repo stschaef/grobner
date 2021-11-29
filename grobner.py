@@ -8,9 +8,11 @@ and things like R are messy so we need not bother
 import copy
 from polynomial import Polynomial, Monomial, order, variables
 
+# TODO: reduce polys mod G at each step
+
 def is_multiple(a, b):
     """Return true if Monomial a is a multiple of Monomial b."""
-    if a.coefficient == 0:
+    if a.coefficient == 0 or b.coefficient == 0:
         return False
     for (deg1, deg2) in zip(a.degrees, b.degrees):
         if deg1 < deg2:
@@ -22,6 +24,8 @@ def can_reduce(f, g):
     for i, m in enumerate(f.monomials):
         if is_multiple(m, g.monomials[0]):
             print(i)
+            # print("F", f)
+            # print("g", g)
             return True, i
     return False, -1
 
@@ -33,7 +37,7 @@ def reduce(f, g):
     m = f.monomials[i]
 
     deg_def = [a - b for (a, b) in zip(m.degrees, g.monomials[0].degrees)]
-    h = Polynomial([Monomial(deg_def, coefficient=m.coefficient / g.monomials[0].coefficient)])
+    h = Polynomial([Monomial(deg_def, coefficient=int(m.coefficient / g.monomials[0].coefficient))])
     return f - h * g
 
 def degree_lcm(a, b):
@@ -49,7 +53,7 @@ def is_zero(p):
 def keep_reducing(f, grob_set):
     did_add = False
     # g = copy.deepcopy(grob_set)
-    for poly in grob_set:
+    for poly in copy.deepcopy(grob_set):
         h = f
         while can_reduce(h, poly)[0]:
             h = reduce(h, poly)
@@ -57,7 +61,7 @@ def keep_reducing(f, grob_set):
                 did_add = True
                 grob_set.add(h)
             
-    if not did_add and not is_zero(f):
+    if not did_add and not is_zero(f) and f not in grob_set:
         grob_set.add(f)
 
 def S_polynomial(f_i, f_j):
@@ -79,10 +83,6 @@ def S_polynomial(f_i, f_j):
     h_j = Polynomial([Monomial([deg1 - deg2 for (deg1, deg2) in zip(a, g_j.degrees)], coefficient=g_j.coefficient)])
     if is_zero(h_i) or is_zero(h_j):
         return Polynomial([])
-    print("h_i", h_i)
-    print("h_j", h_j)
-    print("f_i", f_i)
-    print("f_j", f_j)
     return  h_j * f_j - h_i * f_i
 
 
@@ -113,7 +113,6 @@ def buchberger(gen_set):
     while not all_pairs_considered():
         for f_i in copy.deepcopy(grobner):
             for f_j in copy.deepcopy(grobner):
-                print("G\t", grobner)
                 if f_i == f_j or (f_i, f_j) in S.keys():
                     continue
                 S[(f_i, f_j)] = S_polynomial(f_i, f_j)

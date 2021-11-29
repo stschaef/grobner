@@ -37,7 +37,8 @@ class Monomial:
         def __str__(self):
             s = f"{self.coefficient} " 
             for i, x in enumerate(variables):
-                s += f"{str(x)}^{self.degrees[i]} "
+                if self.degrees[i] != 0:
+                    s += f"{str(x)}^{self.degrees[i]} "
             return s
         
         def __lt__(self, other):
