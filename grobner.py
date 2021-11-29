@@ -46,48 +46,87 @@ def is_zero(p):
             return False
     return True
 
-def keep_reducing(f, grob, orig_grob):
+def keep_reducing(f, grob_set):
     did_add = False
-    for poly in orig_grob:
-        if can_reduce(f, poly)[0]:
-            h = reduce(f, poly)
+    # g = copy.deepcopy(grob_set)
+    for poly in grob_set:
+        h = f
+        while can_reduce(h, poly)[0]:
+            h = reduce(h, poly)
             if not is_zero(h):
                 did_add = True
-                grob.append(h)
-                keep_reducing(h, grob, orig_grob)
+                grob_set.add(h)
+            
     if not did_add and not is_zero(f):
-        grob.append(f)
+        grob_set.add(f)
+
+def S_polynomial(f_i, f_j):
+    """Calculate the S-polynomial for two given members of the current Grobner basis.
+    
+    f_i, f_j \in G
+    g_i the leading term of f_i
+    a_ij = lcm(g_i, g_j)
+    S_ij = (a_ij / g_i) f_i - (a_ij / g_j) f_j
+
+    This is crafted so leading terms cancel out
+    """
+    # leading terms
+    g_i = f_i.monomials[0]
+    g_j = f_j.monomials[0]
+
+    a = degree_lcm(g_i, g_j)
+    h_i = Polynomial([Monomial([deg1 - deg2 for (deg1, deg2) in zip(a, g_i.degrees)], coefficient=g_i.coefficient)])
+    h_j = Polynomial([Monomial([deg1 - deg2 for (deg1, deg2) in zip(a, g_j.degrees)], coefficient=g_j.coefficient)])
+    if is_zero(h_i) or is_zero(h_j):
+        return Polynomial([])
+    print("h_i", h_i)
+    print("h_j", h_j)
+    print("f_i", f_i)
+    print("f_j", f_j)
+    return  h_j * f_j - h_i * f_i
 
 
 def buchberger(gen_set):
-    grobner = gen_set
-    pairs = [(i, j) for i in range(len(grobner)) for j in range(i)]
-    n = len(grobner)
-    S = {}
-    for i, pair in enumerate(pairs):
-        f_0 = grobner[pair[0]]
-        f_1 = grobner[pair[1]]
-        g_0 = f_0.monomials[0]
-        g_1 = f_1.monomials[0]
-        a = degree_lcm(g_0, g_1)
-        h_0 = Polynomial([Monomial([deg1 - deg2 for (deg1, deg2) in zip(a, g_0.degrees)], coefficient=g_1.coefficient)])
-        h_1 = Polynomial([Monomial([deg1 - deg2 for (deg1, deg2) in zip(a, g_1.degrees)], coefficient=g_0.coefficient)])
-        print(h_0)
-        print(h_1)
-        S[pair] =  h_1 * f_1 - h_0 * f_0
-        print(S)
+    """Return a Grobner basis for a given generating set.
+    
+    TODO: This does not adequately handle elements that are equivalent mod G.
+    That is, x and -x are both in the outputted basis for a particular example. For large
+    bases, this may be problematic, as there could be numerous relations mod G that should 
+    be quotiented away.
+    
+    Perhaps this isn't a problem ... processor go brr"""
+    print(gen_set)
+    grobner = set(gen_set)
+    print(grobner)
 
-        keep_reducing(S[pair], grobner, copy.deepcopy(grobner))
-        print(grobner)
-        pairs.extend([(i, j) for i in range(n, len(grobner)) for j in range(i)])
-        n = len(grobner)
-        pairs.remove(pair)
-    # print(pairs
+    S = dict()
 
-f = Polynomial.from_string("1 x^2 y^0 + 2 x^1 y^2")
-g = Polynomial.from_string("1 x^1 y^1 + 2 x^0 y^3 + -1 x^0 y^0")
+    def all_pairs_considered():
+        for f_i in grobner:
+            for f_j in grobner:
+                if f_i == f_j:
+                    continue 
+                if (f_i, f_j) not in S.keys():
+                    return False
+        return True
 
-buchberger([f, g])
+    while not all_pairs_considered():
+        for f_i in copy.deepcopy(grobner):
+            for f_j in copy.deepcopy(grobner):
+                print("G\t", grobner)
+                if f_i == f_j or (f_i, f_j) in S.keys():
+                    continue
+                S[(f_i, f_j)] = S_polynomial(f_i, f_j)
+                keep_reducing(S[(f_i, f_j)], grobner)
+
+    return grobner
+
+# f = Polynomial.from_string("1 x^2 y^0 + 2 x^1 y^2")
+# g = Polynomial.from_string("1 x^1 y^1 + 2 x^0 y^3 + -1 x^0 y^0")
+# h = Polynomial.from_string("1 x^1 y^1 + 2 x^0 y^3 + -1 x^0 y^0")
+
+
+# buchberger([f, g, h])
 
 # f = Polynomial.from_string("2 x^3 y^0 + -1 x^2 y^1 + 1 x^0 y^3 + 3 x^0 y^1")
 # g1 = Polynomial.from_string("1 x^2 y^0 + 1 x^0 y^2 + -1 x^0 y^0")

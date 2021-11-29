@@ -68,7 +68,7 @@ class Polynomial:
 
     def __init__(self, monomials):
         self.monomials = sorted(monomials, reverse=True)
-        self.combine_like_terms()
+        self.simplify()
 
     def from_string(s):
         """Read in a monomial from a string. Do this assuming that the string is in the following format:
@@ -98,10 +98,13 @@ class Polynomial:
                     first = False
                 s += str(f)
             
-        return s if s != "" else str(0)
+        return s.strip() if s != "" else str(0)
 
     def __repr__(self):
         return str(self)
+
+    def __hash__(self):
+        return hash(str(self))
 
     def combine_like_terms(self):
         if len(self.monomials) == 1: 
@@ -123,6 +126,15 @@ class Polynomial:
             c = 0
             i = j
         self.monomials = mons
+
+    def get_rid_of_zeros(self):
+        for mon in self.monomials:
+            if mon.coefficient == 0:
+                self.monomials.remove(mon)
+
+    def simplify(self):
+        self.combine_like_terms()
+        self.get_rid_of_zeros()
             
     def __mul__(self, other):
         """Multiply two polynomials."""
@@ -142,6 +154,14 @@ class Polynomial:
     
     def __sub__(self, other):
         return copy.deepcopy(self + Polynomial([Monomial([0 for _ in variables], -1)]) * other)
+
+    def __eq__(self, other):
+        if len(other.monomials) != len(self.monomials):
+            return False
+        for f, g in zip(self.monomials, other.monomials):
+            if f != g:
+                return False
+        return True
 
 # f = Polynomial.from_string("1 x^0 y^0 + 2 x^1 y^1")
 # g = Polynomial.from_string("1 x^0 y^0 + 2 x^1 y^2")
